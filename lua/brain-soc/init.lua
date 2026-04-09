@@ -94,5 +94,4 @@ vim.defer_fn(function()
   })
 end, 1000)
 
-vim.notify("🧠 Brain SOC plugin loaded", vim.log.levels.INFO)
 return M
