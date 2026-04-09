@@ -1,0 +1,190 @@
+// WHAT IT DOES:
+// - Runs every 15 minutes (recommended via cron)
+// - Fetches today's total coding seconds from WakaTime API
+// - Uses a simple heuristic to decide if the last interval was a "coding interval" or "break interval"
+// - Tracks "fatigue" (cumulated coding time without breaks):
+//    • Coding interval → fatigue increases (drains brain battery)
+//    • Break interval → fatigue decreases (recharges brain battery)
+// - Computes Brain SOC % = (CAPACITY - fatigue) / CAPACITY * 100 (clamped 0-100)
+// - Updates your Slack status with the correct battery emoji + "Brain SOC: xx%"
+// - Writes the latest SOC to ~/.brain-soc.json (easy for Neovim/VSCode plugins to read)
+//
+// SETUP INSTRUCTIONS:
+//    1. env vars: WAKATIME_API_KEY, SLACK_TOKEN
+//    2. Run once manually: npx tsx brain-soc.ts   (or compile with tsc)
+//    3. Add to cron (every 15 min):
+//      */15 * * * * cd ~/bin && npx tsx brain-soc.ts >> ~/brain-soc.log 2>&1
+//    4. Customize the constants below (especially CAPACITY_MINUTES and the iron emojis you added to Slack)
+//
+// Heuristic details (tunable):
+// - If you coded > 5 minutes in the 15-min window → coding interval (drains)
+// - Else → break interval (recharges faster than it drains)
+// - New day automatically resets fatigue to 0
+
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
+import { Buffer } from 'buffer';
+
+// ------------------- CONFIGURATION (edit these) -------------------
+const CAPACITY_MINUTES = 300;           // Your total coding capacity before brain is "empty" (e.g. 5 hours). Adjust to your preference.
+const CODING_THRESHOLD_MINUTES = 5;     // Minimum minutes coded in the 15-min window to count as "coding"
+const DRAIN_RATE = 1.1;                 // Fatigue increases slightly faster than raw time (feels realistic)
+const RECHARGE_MINUTES_PER_BREAK = 25;  // How much fatigue a break interval recovers (recharges faster than drain)
+
+const STATE_FILE = path.join(os.homedir(), '.brain-waka-state.json');
+const SOC_FILE = path.join(os.homedir(), '.brain-soc.json'); // Neovim/VSCode plugins read this
+// -----------------------------------------------------------------
+
+const WAKATIME_API_KEY = process.env.WAKATIME_API_KEY;
+const SLACK_TOKEN = process.env.SLACK_TOKEN;
+
+if (!WAKATIME_API_KEY || !SLACK_TOKEN) {
+  console.error('❌ Missing WAKATIME_API_KEY or SLACK_TOKEN environment variables');
+  process.exit(1);
+}
+
+interface State {
+  last_date: string;
+  last_total_seconds: number;
+  current_fatigue_minutes: number;
+}
+
+async function loadState(): Promise<State> {
+  try {
+    const data = await fs.readFile(STATE_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return { last_date: '', last_total_seconds: 0, current_fatigue_minutes: 0 };
+  }
+}
+
+async function saveState(state: State): Promise<void> {
+  await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+async function fetchTodayTotalSeconds(): Promise<number> {
+  // WakaTime supports "today" as a special value and automatically respects your account timezone
+  const url = 'https://wakatime.com/api/v1/users/current/summaries?start=today&end=today';
+
+  const auth = Buffer.from(`${WAKATIME_API_KEY}:`).toString('base64');
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`WakaTime API error: ${response.status} ${response.statusText}`);
+  }
+
+  const result: any = await response.json();
+  // grand_total.total_seconds is the cumulative coding time today
+  return result.data?.[0]?.grand_total?.total_seconds ?? 0;
+}
+
+function calculateBrainSOC(fatigue: number): number {
+  const soc = (CAPACITY_MINUTES - fatigue) / CAPACITY_MINUTES * 100;
+  return Math.max(0, Math.min(100, soc));
+}
+
+function getIronEmoji(soc: number): string {
+  // CUSTOMIZE THESE to match the custom "iron" emojis you already added in your Slack workspace!
+  // Examples: ':iron-100:', ':iron-80:', ':iron-60:', etc.
+  if (soc >= 85) return ':battery-full:';      // ← replace with your full-iron emoji
+  if (soc >= 70) return ':battery-three-quarters:';
+  if (soc >= 50) return ':battery-half:';
+  if (soc >= 30) return ':battery-quarter:';
+  return ':battery-empty:';                    // ← replace with your empty-iron emoji
+}
+
+async function updateSlackStatus(soc: number): Promise<void> {
+  const emoji = getIronEmoji(soc);
+  const text = `Brain SOC: ${Math.round(soc)}%`;
+
+  const response = await fetch('https://slack.com/api/users.profile.set', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${SLACK_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      profile: {
+        status_text: text,
+        status_emoji: emoji,
+        // status_expiration: 0, // remove comment if you want it to never expire
+      },
+    }),
+  });
+
+  const result: any = await response.json();
+  if (result.ok) {
+    console.log(`✅ Slack status updated → ${emoji} ${text}`);
+  } else {
+    console.error('❌ Slack update failed:', result.error || result);
+  }
+}
+
+async function writeSOCFile(soc: number): Promise<void> {
+  const payload = {
+    soc: Number(soc.toFixed(1)),
+    percentage: `${Math.round(soc)}%`,
+    timestamp: new Date().toISOString(),
+    fatigue_minutes: Number(CAPACITY_MINUTES.toFixed(1)), // for plugin debugging if needed
+  };
+  await fs.writeFile(SOC_FILE, JSON.stringify(payload, null, 2));
+  console.log(`📁 Brain SOC written to ${SOC_FILE}`);
+}
+
+async function runOnce() {
+  console.log(`\n🚀 Brain SOC update started at ${new Date().toISOString()}`);
+
+  const state = await loadState();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const currentTotalSeconds = await fetchTodayTotalSeconds();
+
+  let deltaSeconds = 0;
+  if (state.last_date === todayStr) {
+    deltaSeconds = Math.max(0, currentTotalSeconds - state.last_total_seconds);
+  } else {
+    // New day → full recharge
+    console.log('🌅 New day detected – resetting fatigue');
+    state.current_fatigue_minutes = 0;
+    deltaSeconds = currentTotalSeconds; // use whatever has been coded today so far
+  }
+
+  const deltaMinutes = deltaSeconds / 60;
+  const isCodingInterval = deltaMinutes > CODING_THRESHOLD_MINUTES;
+
+  if (isCodingInterval) {
+    const drain = deltaMinutes * DRAIN_RATE;
+    state.current_fatigue_minutes += drain;
+    console.log(`💻 Coding interval (+${drain.toFixed(1)} min fatigue)`);
+  } else {
+    state.current_fatigue_minutes = Math.max(0, state.current_fatigue_minutes - RECHARGE_MINUTES_PER_BREAK);
+    console.log(`☕ Break interval (-${RECHARGE_MINUTES_PER_BREAK} min fatigue)`);
+  }
+
+  // Safety cap
+  state.current_fatigue_minutes = Math.min(state.current_fatigue_minutes, CAPACITY_MINUTES * 1.5);
+
+  const soc = calculateBrainSOC(state.current_fatigue_minutes);
+
+  // Persist state
+  state.last_date = todayStr;
+  state.last_total_seconds = currentTotalSeconds;
+  await saveState(state);
+
+  // Do the two required actions
+  await writeSOCFile(soc);
+  await updateSlackStatus(soc);
+
+  console.log(`🧠 Brain SOC: ${soc.toFixed(1)}% | Fatigue: ${state.current_fatigue_minutes.toFixed(1)}/${CAPACITY_MINUTES} min`);
+}
+
+runOnce().catch((err) => {
+  console.error('💥 Fatal error:', err);
+  process.exit(1);
+});
