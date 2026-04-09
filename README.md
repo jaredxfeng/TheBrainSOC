@@ -15,7 +15,7 @@ Powered by WakaTime + a 15-minute cron job that updates your Slack status too.
 
 ```lua
 return {
-  "jaredxfeng/brain-soc.nvim",   -- ← change to your repo
+  "jaredxfeng/brain-soc.nvim",
   lazy = false,
   config = function() end,
 }
@@ -30,7 +30,4 @@ return {
 ## Commands
 
 `:BrainSOCSetup` - see above.
-`:BrainSOCRefresh` - force update the statusline. Note: this doesn't refresh the fetch from
-wakatime or the push to Slack, since those are managed by the cron job.
-The refresh only reads the latest data that the cron job saves in your local fs.
 
