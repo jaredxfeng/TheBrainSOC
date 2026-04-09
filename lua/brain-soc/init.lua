@@ -40,10 +40,10 @@ end
 local function write_config(opts)
   vim.fn.mkdir(CONFIG_DIR, "p")
   local config = {
-    capacityMinutes = opts.CAPACITY_MINUTES or 300,
-    drainRate = opts.DRAIN_RATE or 1.1,
-    codingThresholdMinutes = opts.CODING_THRESHOLD_MINUTES or 5,
-    rechargeMinutesPerBreak = opts.RECHARGE_MINUTES_PER_BREAK or 25,
+    capacityMinutes = opts.CAPACITY_MINUTES,
+    drainRate = opts.DRAIN_RATE,
+    codingThresholdMinutes = opts.CODING_THRESHOLD_MINUTES,
+    rechargeMinutesPerBreak = opts.RECHARGE_MINUTES_PER_BREAK,
   }
   vim.fn.writefile({ vim.json.encode(config) }, CONFIG_FILE)
 end
