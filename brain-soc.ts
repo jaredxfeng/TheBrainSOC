@@ -84,13 +84,11 @@ async function fetchTodayTotalSeconds(): Promise<number> {
     "https://wakatime.com/api/v1/users/current/summaries?start=today&end=today";
 
   const auth = Buffer.from(`${WAKATIME_API_KEY}:`).toString("base64");
-
   const response = await fetch(url, {
     headers: {
       Authorization: `Basic ${auth}`,
     },
   });
-
   if (!response.ok) {
     throw new Error(
       `WakaTime API error: ${response.status} ${response.statusText}`,
@@ -105,21 +103,50 @@ function calculateBrainSOC(fatigue: number): number {
   return Math.max(0, Math.min(100, soc));
 }
 
-function getEmoji(soc: number): string {
-  // CUSTOMIZE THESE to match the custom "iron" emojis you already added in your Slack workspace!
-  // Examples: ':iron-100:', ':iron-80:', ':iron-60:', etc.
-  if (soc >= 85) return ":battery-full:"; // ← replace with your full-iron emoji
-  if (soc >= 70) return ":battery-three-quarters:";
-  if (soc >= 50) return ":battery-half:";
-  if (soc >= 30) return ":battery-quarter:";
-  return ":battery-empty:"; // ← replace with your empty-iron emoji
+function getEmoji(soc: number, isCoding: IntervalStatus): string {
+  if (!isCoding) return ":battery-charging:";
+  if (soc >= 70) return ":battery-plenty:";
+  if (soc >= 40) return ":battery-half:";
+  if (soc >= 15) return ":battery-few:";
+  if (soc > 0) return ":battery-little";
+  return ":battery-empty:";
 }
 
-async function updateSlackStatus(soc: number): Promise<void> {
-  const emoji = getEmoji(soc);
-  const text = `Brain SOC: ${Math.round(soc)}%`;
+async function checkIfSlackStatusCanBeUpdated(): Promise<boolean> {
+  const getResponse = await fetch("https://slack.com/api/users.profile.get", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${SLACK_TOKEN}`,
+    },
+  });
+  const getResult: any = await getResponse.json();
 
-  const response = await fetch("https://slack.com/api/users.profile.set", {
+  if (!getResult.ok) {
+    console.error(
+      "Failed to fetch current Slack status:",
+      getResult.error || getResult,
+    );
+    return false; // safety: don't update if we can't check
+  }
+  const currentEmoji = getResult.profile?.status_emoji || "";
+
+  if (currentEmoji && !currentEmoji.startsWith(":battery-")) {
+    return false;
+  } else return true;
+}
+
+export async function updateSlackStatus(
+  soc: number,
+  state: State,
+): Promise<void> {
+  const canUpdate: boolean = await checkIfSlackStatusCanBeUpdated();
+
+  if (!canUpdate) return;
+
+  const emoji = getEmoji(soc, state.current_interval_status);
+  const statusText = `Brain SOC: ${Math.round(soc)}%`;
+
+  const postResponse = await fetch("https://slack.com/api/users.profile.set", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${SLACK_TOKEN}`,
@@ -127,17 +154,15 @@ async function updateSlackStatus(soc: number): Promise<void> {
     },
     body: JSON.stringify({
       profile: {
-        status_text: text,
+        status_text: statusText,
         status_emoji: emoji,
         status_expiration: 0, // if you want it to never expire
       },
     }),
   });
 
-  const result: any = await response.json();
-  if (result.ok) {
-    console.log(`Slack status updated → ${emoji} ${text}`);
-  } else {
+  const result: any = await postResponse.json();
+  if (!result.ok) {
     console.error("Slack update failed:", result.error || result);
   }
 }
@@ -165,7 +190,6 @@ function getDeltaMinutes(
     state.current_fatigue_minutes = 0;
     deltaSeconds = currentTotalSeconds;
   }
-
   const deltaMinutes = deltaSeconds / 60;
   return deltaMinutes;
 }
@@ -205,9 +229,9 @@ async function runOnce() {
   const soc = calculateBrainSOC(state.current_fatigue_minutes);
   await saveState(state);
 
-  // Do the two required actions
+  // Two output actions
   await writeSOCFile(soc);
-  await updateSlackStatus(soc);
+  await updateSlackStatus(soc, state);
 
   console.log(`Brain SOC: ${soc}% `);
 }
