@@ -11,7 +11,7 @@ Powered by WakaTime + a 15-minute cron job that updates your Slack status too.
 
 ## Installation
 
-Create a file `~/.config/nvim/lua/plugins/brain-soc.lua` with these lines:
+1. Create a file `~/.config/nvim/lua/plugins/brain-soc.lua` with these lines:
 
 ```lua
 return {
@@ -21,6 +21,16 @@ return {
 }
 ```
 
+2. In your neovim, run `:BrainSOCSetup` to input your wakatime API key and the Slack OAuth Token of The Brain SOC Slack App.
+
+3. Add a line inside your `crontab -e`: `*/15 * * * * cd ~/.local/share/nvim/lazy/brain-soc.nvim/bin && ./run-brain-soc.sh`. Save and exit. 
+
+4. Restart your neovim and continue to enjoy coding until it stops you!
+
 ## Commands
 
-`:BrainSOCRefresh` — force update the statusline.
+`:BrainSOCSetup` - see above.
+`:BrainSOCRefresh` - force update the statusline. Note: this doesn't refresh the fetch from
+wakatime or the push to Slack, since those are managed by the cron job.
+The refresh only reads the latest data that the cron job saves in your local fs.
+

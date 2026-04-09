@@ -62,8 +62,13 @@ vim.api.nvim_create_user_command("BrainSOCSetup", function()
       end
 
       vim.fn.mkdir(CONFIG_DIR, "p")
-      local env_content = string.format("WAKATIME_API_KEY=%s\nSLACK_TOKEN=%s\n", wakatime_key, slack_token)
-      vim.fn.writefile({ env_content }, CONFIG_DIR .. "/.env")
+
+      local env_lines = {
+        "WAKATIME_API_KEY=" .. wakatime_key,
+        "SLACK_TOKEN=" .. slack_token,
+        ""  -- trailing empty line (good practice for .env files)
+      }
+      vim.fn.writefile(env_lines, CONFIG_DIR .. "/.env")
 
       vim.notify(".env and config created in ~/.config/brain-soc/", vim.log.levels.INFO)
       vim.notify("Add this line to your crontab (crontab -e):\n*/15 * * * * cd ~/.local/share/nvim/lazy/TheBrainSOC/bin && ./run-brain-soc.sh", vim.log.levels.INFO)
