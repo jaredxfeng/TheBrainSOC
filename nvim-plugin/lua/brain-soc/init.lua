@@ -42,7 +42,7 @@ end
 vim.api.nvim_create_user_command("BrainSOCRefresh", function()
   read_soc_file()
   vim.cmd("redrawstatus!")
-  print("Brain SOC refreshed: " .. cache.text)
+  print(string.format("🧠 SOC %d%%", math.floor(cache.soc + 0.5)))
 end, {})
 
 -- Auto-refresh every 30 seconds in the background
