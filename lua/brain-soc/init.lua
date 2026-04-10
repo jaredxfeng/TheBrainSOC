@@ -21,7 +21,6 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
     if eq_pos then
       local key = vim.trim(arg:sub(1, eq_pos - 1))
       local val_str = vim.trim(arg:sub(eq_pos + 1))
-      notify.info(string.format("DEBUG → parsed key='%s' value='%s'", key, val_str))
       local value
       if val_str == "true" then
         value = true
