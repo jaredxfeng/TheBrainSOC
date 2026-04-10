@@ -53,6 +53,8 @@ return {
 
 4. Add a line inside your `crontab -e`: `*/15 * * * * cd ~/.local/share/nvim/lazy/brain-soc.nvim/bin && ./run-brain-soc.sh`. Save and exit.
 
+5. See `getEmoji()` in `brainSoc.ts`, this maps the current brain SOC to a battery emoji that you should also manually upload to your slack workspace. 
+
 And you are done. Restart your neovim and continue to enjoy coding until it stops you!
 
 ## Parameters in `opts`
