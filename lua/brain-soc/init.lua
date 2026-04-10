@@ -146,10 +146,4 @@ function M.lualine_component()
   }
 end
 
-setmetatable(M, {
-  __call = function()
-    return M.lualine_component()
-  end,
-})
-
 return M
