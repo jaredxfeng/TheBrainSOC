@@ -11,13 +11,13 @@ local CACHE_TTL = 60 -- seconds (refreshes automatically)
 vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
   -- No arguments → show current config
   if #opts.fargs == 0 then
-    notify.info("Current config:\n" .. vim.inspect(config))
+    notify.info("Current config:\n" .. vim.inspect(config.get()))
     return
   end
 
   local updates = {}
   for _, arg in ipairs(opts.fargs) do
-    local key, val_str = arg:match("^(%w+)=(.+)$")
+    local key, val_str = arg:match("^(%w+)%s*=%s=(.+)$")
     if key and val_str then
       local value = val_str
       if val_str == "true" then
@@ -29,7 +29,7 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
       end
       updates[key] = value
     else
-      notify.warn("Invalid format. Use: key=value (e.g. param_one=newval)")
+      notify.warn("Invalid format. Use: key=value (e.g. drain_rate=1)")
     end
   end
 
