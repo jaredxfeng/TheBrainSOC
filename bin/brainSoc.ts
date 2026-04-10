@@ -30,6 +30,7 @@ interface Config {
 
 const MS_IN_MINUTES = 1000 * 60;
 const SECONDS_IN_MINUTES = 60;
+const MINUTES_IN_INTERVALS = 15;
 const CONFIG_DIR = path.join(os.homedir(), ".config", "brain-soc");
 const ENV_FILE = path.join(CONFIG_DIR, ".env");
 dotenv.config({ path: ENV_FILE });
@@ -177,25 +178,25 @@ async function writeSOCFile(soc: number): Promise<void> {
   console.log(`Brain SOC written to ${SOC_FILE}`);
 }
 
-function getDeltaMinutes(state: State, currentTotalSeconds: number): number {
+function getDeltaCodingMinutes(state: State, currentTotalSeconds: number): number {
   const deltaSeconds = Math.max(
     0,
     currentTotalSeconds - state.last_total_seconds,
   );
-  const deltaMinutes = deltaSeconds / 60;
+  const deltaMinutes = deltaSeconds / SECONDS_IN_MINUTES;
   return deltaMinutes;
 }
 
-function updateState(
+function updateStateLive(
   state: State,
-  nowStr: string,
+  now: string,
   currentTotalSeconds: number,
 ): void {
-  const deltaMinutes = getDeltaMinutes(state, currentTotalSeconds);
-  const isCodingInterval = deltaMinutes > userConfig.codingThresholdMinutes;
+  const deltaCodingMinutes = getDeltaCodingMinutes(state, currentTotalSeconds);
+  const isCodingInterval = deltaCodingMinutes > userConfig.codingThresholdMinutes;
 
   if (isCodingInterval) {
-    const drainMinutes = deltaMinutes * userConfig.drainRate;
+    const drainMinutes = deltaCodingMinutes * userConfig.drainRate;
     state.current_fatigue_minutes = Math.min(
       state.current_fatigue_minutes + drainMinutes,
       userConfig.capacityMinutes,
@@ -208,29 +209,61 @@ function updateState(
     );
     state.current_interval_status = IntervalStatus.break;
   }
-  state.last_date_time = nowStr;
+  state.last_date_time = now;
   state.last_total_seconds = currentTotalSeconds;
 }
 
-function is15MinutesFromLastRun(state: State, nowStr: string): boolean {
+function updateStateReplay(
+  state: State,
+  now: string,
+  currentTotalSeconds: number)
+: void {
+  const diffInMinutes = diffMinutes(state, now);
+  const deltaCodingMinutes = getDeltaCodingMinutes(state, currentTotalSeconds);
+  const drain = deltaCodingMinutes * userConfig.drainRate; 
+  const breakMinutes = Math.max(diffInMinutes - deltaCodingMinutes, 0);
+  const rechargeMinutes = breakMinutes / MINUTES_IN_INTERVALS * userConfig.rechargeMinutesPerBreak;
+  state.current_fatigue_minutes += drain;
+  state.current_fatigue_minutes -= rechargeMinutes;
+  state.current_interval_status = IntervalStatus.coding;
+  state.last_total_seconds = currentTotalSeconds;
+  state.last_date_time = now;
+}
+
+function diffMinutes(state: State, now: string): number {
   const lastRunTime = new Date(state.last_date_time);
-  const thisRunTime = new Date(nowStr);
+  const thisRunTime = new Date(now);
   const diffInMs = thisRunTime.getTime() - lastRunTime.getTime();
   const diffInMinutes = Math.round(diffInMs / MS_IN_MINUTES);
-  return diffInMinutes >= 15;
+  return diffInMinutes;
+}
+
+function isNewSession(state: State, now: string): boolean {
+  const diffInMinutes = diffMinutes(state, now);
+  return diffInMinutes > MINUTES_IN_INTERVALS;
+}
+
+function is15MinutesFromLastRun(state: State, now: string): boolean {
+  const diffInMinutes = diffMinutes(state, now);
+  return diffInMinutes >= MINUTES_IN_INTERVALS;
 }
 
 async function runOnce() {
   await loadConfig();
   const state: State = await loadState();
-  const nowStr = new Date().toISOString();
-  const shouldRefetch: boolean = is15MinutesFromLastRun(state, nowStr);
+  const now = new Date().toISOString();
+  const shouldRefetch: boolean = is15MinutesFromLastRun(state, now);
 
   if (shouldRefetch) {
     const currentTotalSeconds = shouldRefetch
       ? await fetchTodayTotalSeconds()
       : state.current_fatigue_minutes * SECONDS_IN_MINUTES;
-    updateState(state, nowStr, currentTotalSeconds);
+
+    if (isNewSession(state, now)) {
+      updateStateReplay(state, now, currentTotalSeconds);
+    } else {
+      updateStateLive(state, now, currentTotalSeconds);
+    }
     await saveState(state);
   }
 
