@@ -218,10 +218,9 @@ function updateState(
       );
       state.current_interval_status = IntervalStatus.break;
     }
+    state.last_date_time = nowStr;
+    state.last_total_seconds = currentTotalSeconds;
   }
-
-  state.last_date_time = nowStr;
-  state.last_total_seconds = currentTotalSeconds;
 }
 
 function is15MinutesFromLastRun(state: State, nowStr: string): boolean {
