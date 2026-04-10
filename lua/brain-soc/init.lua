@@ -10,11 +10,11 @@ local cache = { soc = nil, text = "🧠 --%", timestamp = 0 }
 local CACHE_TTL = 60 -- seconds (refreshes automatically)
 
 local last_modal = {
-  critical = 0,  -- timestamp of last ≤10% modal
-  warning = 0,   -- timestamp of last 11-20% modal
+  critical = 0, -- timestamp of last ≤10% modal
+  warning = 0, -- timestamp of last 11-20% modal
 }
-local CRITICAL_COOLDOWN = 300   -- 5 minutes in seconds
-local WARNING_COOLDOWN = 900    -- 15 minutes in seconds
+local CRITICAL_COOLDOWN = 300 -- 5 minutes in seconds
+local WARNING_COOLDOWN = 900 -- 15 minutes in seconds
 
 vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
   -- No arguments → show current config
@@ -85,17 +85,17 @@ end
 
 local function create_centered_warning(soc)
   local is_critical = soc <= 10
-  local title = "The Brain SOC"
-  local hl_group = is_critical and "DiagnosticError" or "DiagnosticWarn"  -- matches your lualine colors
+  local title = " The Brain SOC "
+  local hl_group = is_critical and "DiagnosticError" or "DiagnosticWarn" -- matches your lualine colors
 
   local lines = {
     "",
-    string.format("      🧠 : %d%%      ", math.floor(soc + 0.5)),
+    string.format("🧠 state of charge: %d%%      ", math.floor(soc + 0.5)),
     "",
     is_critical and "   Take a break or your brain breaks.   " or "   Consider a short break soon.   ",
     "",
     "   Press <Esc> or q to dismiss   ",
-    ""
+    "",
   }
 
   local buf = vim.api.nvim_create_buf(false, true)
