@@ -55,7 +55,6 @@ enum IntervalStatus {
   break = "break",
 }
 
-
 const MS_IN_DAY = 1000 * 60 * 60 * 24;
 const SECONDS_IN_MINUTES = 60;
 
@@ -185,11 +184,11 @@ async function writeSOCFile(soc: number): Promise<void> {
   console.log(`Brain SOC written to ${SOC_FILE}`);
 }
 
-function getDeltaMinutes(
-  state: State,
-  currentTotalSeconds: number,
-): number {
-  const deltaSeconds = Math.max(0, currentTotalSeconds - state.last_total_seconds);
+function getDeltaMinutes(state: State, currentTotalSeconds: number): number {
+  const deltaSeconds = Math.max(
+    0,
+    currentTotalSeconds - state.last_total_seconds,
+  );
   const deltaMinutes = deltaSeconds / 60;
   return deltaMinutes;
 }
@@ -198,29 +197,26 @@ function updateState(
   state: State,
   nowStr: string,
   currentTotalSeconds: number,
-  isDatumRefetched: boolean,
 ): void {
-  if (isDatumRefetched) {
-    const deltaMinutes = getDeltaMinutes(state, currentTotalSeconds);
-    const isCodingInterval = deltaMinutes > CONFIG.codingThresholdMinutes;
+  const deltaMinutes = getDeltaMinutes(state, currentTotalSeconds);
+  const isCodingInterval = deltaMinutes > CONFIG.codingThresholdMinutes;
 
-    if (isCodingInterval) {
-      const drainMinutes = deltaMinutes * CONFIG.drainRate;
-      state.current_fatigue_minutes = Math.min(
-        state.current_fatigue_minutes + drainMinutes,
-        CONFIG.capacityMinutes,
-      );
-      state.current_interval_status = IntervalStatus.coding;
-    } else {
-      state.current_fatigue_minutes = Math.max(
-        0,
-        state.current_fatigue_minutes - CONFIG.rechargeMinutesPerBreak,
-      );
-      state.current_interval_status = IntervalStatus.break;
-    }
-    state.last_date_time = nowStr;
-    state.last_total_seconds = currentTotalSeconds;
+  if (isCodingInterval) {
+    const drainMinutes = deltaMinutes * CONFIG.drainRate;
+    state.current_fatigue_minutes = Math.min(
+      state.current_fatigue_minutes + drainMinutes,
+      CONFIG.capacityMinutes,
+    );
+    state.current_interval_status = IntervalStatus.coding;
+  } else {
+    state.current_fatigue_minutes = Math.max(
+      0,
+      state.current_fatigue_minutes - CONFIG.rechargeMinutesPerBreak,
+    );
+    state.current_interval_status = IntervalStatus.break;
   }
+  state.last_date_time = nowStr;
+  state.last_total_seconds = currentTotalSeconds;
 }
 
 function is15MinutesFromLastRun(state: State, nowStr: string): boolean {
@@ -244,7 +240,8 @@ async function runOnce() {
     ? await fetchTodayTotalSeconds()
     : state.current_fatigue_minutes * SECONDS_IN_MINUTES;
 
-  updateState(state, nowStr, currentTotalSeconds, shouldRefetch);
+  if (shouldRefetch) updateState(state, nowStr, currentTotalSeconds);
+
   const soc = calculateBrainSOC(state.current_fatigue_minutes);
   await writeSOCFile(soc);
   await updateSlackStatus(soc, state);
