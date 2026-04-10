@@ -27,9 +27,9 @@ end
 
 -- Snake_case → camelCase mapping for your backend
 local backend_mapping = {
-  capacity_minutes          = "capacityMinutes",
-  drain_rate                = "drainRate",
-  coding_threshold_minutes  = "codingThresholdMinutes",
+  capacity_minutes = "capacityMinutes",
+  drain_rate = "drainRate",
+  coding_threshold_minutes = "codingThresholdMinutes",
   recharge_minutes_per_break = "rechargeMinutesPerBreak",
 }
 

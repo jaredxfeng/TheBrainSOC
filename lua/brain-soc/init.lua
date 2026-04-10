@@ -33,7 +33,7 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
   end
 
   if next(updates) then
-    M.update_config(updates)  -- or M.update_config if inside the module
+    M.update_config(updates) -- or M.update_config if inside the module
   end
 end, {
   nargs = "*",
