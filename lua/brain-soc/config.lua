@@ -21,8 +21,8 @@ M.options = vim.deepcopy(M.defaults)
 
 -- Build lookup table once (no duplication)
 local allowed = {}
-  for _, k in ipairs(M.keys) do
-    allowed[k] = true
+for _, k in ipairs(M.keys) do
+  allowed[k] = true
 end
 
 -- Snake_case → camelCase mapping for backend
@@ -89,7 +89,6 @@ function M.load()
     if backend_config[camel_key] ~= nil then
       M.options[key] = backend_config[camel_key]
     end
-
   end
 end
 
