@@ -17,9 +17,12 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
 
   local updates = {}
   for _, arg in ipairs(opts.fargs) do
-    local key, val_str = arg:match("^(%w+)%s*=%s=(.+)$")
-    if key and val_str then
-      local value = val_str
+    local eq_pos = arg:find("=")
+    if eq_pos then
+      local key = vim.trim(arg:sub(1, eq_pos - 1))
+      local val_str = vim.trim(arg:sub(eq_pos + 1))
+      notify.info(string.format("DEBUG → parsed key='%s' value='%s'", key, val_str))
+      local value
       if val_str == "true" then
         value = true
       elseif val_str == "false" then
@@ -29,7 +32,6 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
       end
       updates[key] = value
     else
-      notify.warn("Invalid value: " .. val_str)
       notify.warn("Invalid format. Use: key=value (e.g. drain_rate=1)")
     end
   end
