@@ -147,7 +147,7 @@ export async function updateSlackStatus(
   if (!canUpdate) return;
 
   const emoji = getEmoji(soc, state.current_interval_status);
-  const statusText = `Brain SOC: ${Math.round(soc)}%`;
+  const statusText = `Brain: ${Math.round(soc)}%`;
 
   const postResponse = await fetch("https://slack.com/api/users.profile.set", {
     method: "POST",
