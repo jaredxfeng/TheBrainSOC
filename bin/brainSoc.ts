@@ -55,7 +55,7 @@ enum IntervalStatus {
   break = "break",
 }
 
-const MS_IN_DAY = 1000 * 60 * 60 * 24;
+const MS_IN_MINUTES = 1000 * 60;
 const SECONDS_IN_MINUTES = 60;
 
 interface State {
@@ -223,8 +223,7 @@ function is15MinutesFromLastRun(state: State, nowStr: string): boolean {
   const lastRunTime = new Date(state.last_date_time);
   const thisRunTime = new Date(nowStr);
   const diffInMs = thisRunTime.getTime() - lastRunTime.getTime();
-  const msInDay = 1000 * 60 * 60 * 24;
-  const diffInMinutes = Math.round(diffInMs / msInDay);
+  const diffInMinutes = Math.round(diffInMs / MS_IN_MINUTES);
   return diffInMinutes >= 15;
 }
 
