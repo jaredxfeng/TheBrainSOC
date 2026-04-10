@@ -49,7 +49,7 @@ end
 -- Merge new values and save to disk
 function M.merge(new_opts)
   if type(new_opts) ~= "table" then
-    notify.error("BrainSOC: config.merge expects a table")
+    notify.erro("config.merge expects a table")
     return
   end
 
@@ -57,7 +57,7 @@ function M.merge(new_opts)
     if allowed[k] then
       M.options[k] = v
     else
-     notify.warn("BrainSOC: Unknown config key " .. k)
+      notify.war("Unknown config key " .. k)
     end
   end
 
@@ -100,7 +100,7 @@ function M.save()
   end)
 
   if not ok then
-    notify.error("BrainSOC: failed to save config - " .. (err or "unknown error"))
+    notify.erro("Failed to save config - " .. (err or "unknown error"))
   end
 end
 

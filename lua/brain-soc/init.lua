@@ -83,14 +83,14 @@ end
 
 function M.update_config(updates)
   config.merge(updates)
-  notify.info("BrainSOC: Config(s) updated.")
+  notify.info("Config(s) updated.")
   -- TODO: rerender SOC %?
 end
 
 vim.api.nvim_create_user_command("BrainSOCSetup", function()
   vim.ui.input({ prompt = "WakaTime API Key: " }, function(wakatime_token)
     if not wakatime_token or wakatime_token == "" then
-      notify.warn("BrainSOC: Setup cancelled")
+      notify.warn("Setup cancelled")
       return
     end
 

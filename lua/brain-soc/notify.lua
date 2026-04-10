@@ -6,7 +6,7 @@ local M = {}
 ---@param opts? table
 local function notify(msg, level, opts)
   opts = opts or {}
-  opts.title = opts.title or "The Brain SOC"  -- ← your custom title here
+  opts.title = opts.title or "The Brain SOC" -- ← your custom title here
   vim.notify(msg, level, opts)
 end
 
