@@ -1,34 +1,99 @@
 local M = {}
 
-local config = {
-  param_one = "default_value",
-  param_two = 42,
-  param_three = true,
-  param_four = "another_default",
+local CONFIG_DIR = vim.fn.expand("~/.config/brain-soc")
+local CONFIG_FILE = CONFIG_DIR .. "/config.json"
+
+M.defaults = {
+  capacity_minutes = 300,
+  drain_rate = 1.1,
+  coding_threshold_minutes = 3,
+  recharging_minutes_in_break = 25,
 }
 
-M.setup = function() end
+M.options = vim.deepcopy(M.defaults)
 
-M.update_config = function(updates)
-  if type(updates) ~= "table" then
-    vim.notify("Brain SOC: update_config expects a table", vim.log.levels.ERROR)
+local function ensure_dir()
+  vim.fn.mkdir(CONFIG_DIR, "p")
+end
+
+local function to_backend_format(opts)
+  return {
+    capacityMinutes = opts.capacity_minutes,
+    drainRate = opts.drain_rate,
+    codingThresholdMinutes = opts.coding_threshold_minutes,
+    recharingMinutesInBreak = opts.recharging_minutes_in_break,
+  }
+end
+
+-- Merge new values and save to disk
+function M.merge(new_opts)
+  if type(new_opts) ~= "table" then
+    vim.notify("BrainSOC: update_config expects a table", vim.log.levels.ERROR)
     return
   end
 
-  local allowed = { param_one = true, param_two = true, param_three = true, param_four = true }
-  for k, v in pairs(updates) do
+  local allowed = {
+    capacity_minutes = true,
+    drain_rate = true,
+    coding_threshold_minutes = true,
+    recharging_minutes_in_break = true,
+  }
+
+  for k, v in pairs(new_opts) do
     if allowed[k] then
-      config[k] = v
+      M.options[k] = v
     else
-      vim.notify("Brain SOC: Unknown config key: " .. k, vim.log.levels.WARN)
+      vim.notify("BrainSOC: Unknown config key " .. k, vim.log.levels.WARN)
     end
   end
 
-  vim.notify("Brain SOC config updated", vim.log.levels.INFO)
+  M.save()
 end
 
-M.get_config = function()
-  return vim.deepcopy(config)
+-- Load saved config from disk. Called once at startup
+function M.load()
+  if vim.fn.filereadable(CONFIG_FILE) == 0 then
+    return
+  end
+
+  local content = vim.fn.readfile(CONFIG_FILE)
+  local ok, backend_config = pcall(vim.json.decode, table.concat(content, ""))
+  if not ok or not backend_config then
+    return
+  end
+
+  -- Convert camelCase back to snake_case (retire after lua rewrite of TS backend)
+  if backend_config.capacityMinutes ~= nil then
+    M.options.capacity_minutes = backend_config.capacityMinutes
+  end
+  if backend_config.drainRate ~= nil then
+    M.options.drain_rate = backend_config.drainRate
+  end
+  if backend_config.codingThresholdMintues ~= nil then
+    M.options.coding_threshold_minutes = backend_config.codingThresholdMintues
+  end
+  if backend_config.rechargingMintuesInBreak ~= nil then
+    M.options.recharging_minutes_in_break = backend_config.rechargingMintuesInBreak
+  end
+end
+
+-- Public getter
+function M.get()
+  return vim.deepcopy(M.options)
+end
+
+-- Save to disk
+function M.save()
+  ensure_dir()
+  local backend_config = to_backend_format(M.options)
+
+  local ok, err = pcall(function()
+    vim.fn.writefile({ vim.json.encode(backend_config) }, CONFIG_FILE)
+  end)
+
+  if not ok then
+    vim.notify("BrainSOC: failed to save config - " .. (err or "unknown error"), vim.log.levels.ERROR)
+  end
 end
 
 return M
