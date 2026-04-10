@@ -1,5 +1,5 @@
 local M = {}
-
+local notify = require("brain-soc.notify")
 local CONFIG_DIR = vim.fn.expand("~/.config/brain-soc")
 local CONFIG_FILE = CONFIG_DIR .. "/config.json"
 
@@ -49,7 +49,7 @@ end
 -- Merge new values and save to disk
 function M.merge(new_opts)
   if type(new_opts) ~= "table" then
-    vim.notify("BrainSOC: config.merge expects a table", vim.log.levels.ERROR)
+    notify.error("BrainSOC: config.merge expects a table")
     return
   end
 
@@ -57,7 +57,7 @@ function M.merge(new_opts)
     if allowed[k] then
       M.options[k] = v
     else
-      vim.notify("BrainSOC: Unknown config key " .. k, vim.log.levels.WARN)
+     notify.warn("BrainSOC: Unknown config key " .. k)
     end
   end
 
@@ -100,7 +100,7 @@ function M.save()
   end)
 
   if not ok then
-    vim.notify("BrainSOC: failed to save config - " .. (err or "unknown error"), vim.log.levels.ERROR)
+    notify.error("BrainSOC: failed to save config - " .. (err or "unknown error"))
   end
 end
 

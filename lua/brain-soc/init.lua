@@ -1,6 +1,7 @@
 local M = {}
 
 local config = require("brain-soc.config")
+local notify = require("brain-soc.notify")
 
 local CONFIG_DIR = vim.fn.expand("~/.config/brain-soc")
 local SOC_FILE = vim.fn.expand("~/.brain-soc.json")
@@ -10,7 +11,7 @@ local CACHE_TTL = 60 -- seconds (refreshes automatically)
 vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
   -- No arguments → show current config
   if #opts.fargs == 0 then
-    vim.notify("Current config:\n" .. vim.inspect(config), vim.log.levels.INFO)
+    notify.info("Current config:\n" .. vim.inspect(config))
     return
   end
 
@@ -28,7 +29,7 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
       end
       updates[key] = value
     else
-      vim.notify("Invalid format. Use: key=value (e.g. param_one=newval)", vim.log.levels.WARN)
+      notify.warn("Invalid format. Use: key=value (e.g. param_one=newval)")
     end
   end
 
@@ -82,20 +83,20 @@ end
 
 function M.update_config(updates)
   config.merge(updates)
-  vim.notify("BrainSOC: Config(s) updated.", vim.log.levels.INFO)
+  notify.info("BrainSOC: Config(s) updated.")
   -- TODO: rerender SOC %?
 end
 
 vim.api.nvim_create_user_command("BrainSOCSetup", function()
   vim.ui.input({ prompt = "WakaTime API Key: " }, function(wakatime_token)
     if not wakatime_token or wakatime_token == "" then
-      vim.notify("BrainSOC: Setup cancelled", vim.log.levels.WARN)
+      notify.warn("BrainSOC: Setup cancelled")
       return
     end
 
     vim.ui.input({ prompt = "Slack Token (xoxp- or xoxb-): " }, function(slack_token)
       if not slack_token or slack_token == "" then
-        vim.notify("Setup cancelled", vim.log.levels.WARN)
+        notify.warn("Setup cancelled")
         return
       end
 
@@ -108,10 +109,9 @@ vim.api.nvim_create_user_command("BrainSOCSetup", function()
       }
       vim.fn.writefile(env_lines, CONFIG_DIR .. "/.env")
 
-      vim.notify(".env and config created in ~/.config/brain-soc/", vim.log.levels.INFO)
-      vim.notify(
-        "Add this line to your crontab (crontab -e):\n*/15 * * * * cd ~/.local/share/nvim/lazy/TheBrainSOC/bin && ./run-brain-soc.sh",
-        vim.log.levels.INFO
+      notify.info(".env and config created in ~/.config/brain-soc/")
+      notify.info(
+        "Add this line to your crontab (crontab -e):\n*/15 * * * * cd ~/.local/share/nvim/lazy/TheBrainSOC/bin && ./run-brain-soc.sh"
       )
     end)
   end)
@@ -123,7 +123,7 @@ end, {
 vim.defer_fn(function()
   local ok, err = pcall(readSocFile)
   if not ok then
-    vim.notify("BrainSOC init error: " .. tostring(err), vim.log.levels.WARN)
+    notify.warn("BrainSOC init error: " .. tostring(err))
   end
 
   vim.api.nvim_create_autocmd("CursorHold", {
