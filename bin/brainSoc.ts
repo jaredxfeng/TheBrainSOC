@@ -1,5 +1,5 @@
 // Heuristic details (tunable):
-// - If you coded > 5 minutes in the 15-min window → coding interval (drains)
+// - If you coded > threshold minutes in the 15-min window → coding interval (drains)
 // - Else → break interval (recharges faster than it drains)
 // - New day automatically resets fatigue to 0
 
@@ -19,7 +19,7 @@ dotenv.config({ path: ENV_FILE });
 let CONFIG = {
   capacityMinutes: 300,
   drainRate: 1.1,
-  codingThresholdMinutes: 5, // renamed from codingThresholdMinutes
+  codingThresholdMinutes: 5,
   rechargeMinutesPerBreak: 25,
 };
 
@@ -159,7 +159,7 @@ export async function updateSlackStatus(
       profile: {
         status_text: statusText,
         status_emoji: emoji,
-        status_expiration: 0, // if you want it to never expire
+        status_expiration: 0,
       },
     }),
   });

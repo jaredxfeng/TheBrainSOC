@@ -25,7 +25,7 @@ for _, k in ipairs(M.keys) do
   allowed[k] = true
 end
 
--- Snake_case → camelCase mapping for your backend
+-- Snake_case → camelCase mapping for backend
 local backend_mapping = {
   capacity_minutes = "capacityMinutes",
   drain_rate = "drainRate",

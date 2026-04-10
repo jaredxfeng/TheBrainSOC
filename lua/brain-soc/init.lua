@@ -34,7 +34,7 @@ vim.api.nvim_create_user_command("BrainSOCConfig", function(opts)
   end
 
   if next(updates) then
-    M.update_config(updates) -- or M.update_config if inside the module
+    M.update_config(updates)
   end
 end, {
   nargs = "*",
@@ -84,7 +84,7 @@ end
 function M.update_config(updates)
   config.merge(updates)
   notify.info("Config(s) updated.")
-  -- TODO: rerender SOC %?
+  -- TODO: rerender SOC % after updating config?
 end
 
 vim.api.nvim_create_user_command("BrainSOCSetup", function()
@@ -105,7 +105,7 @@ vim.api.nvim_create_user_command("BrainSOCSetup", function()
       local env_lines = {
         "WAKATIME_API_KEY=" .. wakatime_token,
         "SLACK_TOKEN=" .. slack_token,
-        "", -- trailing empty line (good practice for .env files)
+        "",
       }
       vim.fn.writefile(env_lines, CONFIG_DIR .. "/.env")
 
