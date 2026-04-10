@@ -9,35 +9,31 @@ import os from "os";
 import { Buffer } from "buffer";
 import dotenv from "dotenv";
 
-const CONFIG_DIR = path.join(os.homedir(), ".config", "brain-soc");
-const ENV_FILE = path.join(CONFIG_DIR, ".env");
-const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
-
-dotenv.config({ path: ENV_FILE });
-
-// Default values (will be overridden by config.json if it exists)
-let CONFIG = {
-  capacityMinutes: 300,
-  drainRate: 1.1,
-  codingThresholdMinutes: 5,
-  rechargeMinutesPerBreak: 25,
-};
-
-async function loadConfig(): Promise<void> {
-  try {
-    await fs.mkdir(CONFIG_DIR, { recursive: true });
-    const data = await fs.readFile(CONFIG_FILE, "utf-8");
-    const userConfig = JSON.parse(data);
-    CONFIG = { ...CONFIG, ...userConfig };
-    console.log("Loaded user config from ~/.config/brain-soc/config.json");
-  } catch (e) {
-    // First run or no config yet → create default
-    await fs.mkdir(CONFIG_DIR, { recursive: true });
-    await fs.writeFile(CONFIG_FILE, JSON.stringify(CONFIG, null, 2));
-    console.log("Created default config in ~/.config/brain-soc/config.json");
-  }
+enum IntervalStatus {
+  coding = "coding",
+  break = "break",
 }
 
+interface State {
+  last_date_time: string;
+  last_total_seconds: number;
+  current_fatigue_minutes: number;
+  current_interval_status: IntervalStatus;
+}
+
+interface Config {
+  capacityMinutes: number;
+  drainRate: number;
+  codingThresholdMinutes: number;
+  rechargeMinutesPerBreak: number; 
+}
+
+const MS_IN_MINUTES = 1000 * 60;
+const SECONDS_IN_MINUTES = 60;
+const CONFIG_DIR = path.join(os.homedir(), ".config", "brain-soc");
+const ENV_FILE = path.join(CONFIG_DIR, ".env");
+dotenv.config({ path: ENV_FILE });
+const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 const STATE_FILE = path.join(os.homedir(), ".brain-waka-state.json");
 const SOC_FILE = path.join(os.homedir(), ".brain-soc.json");
 const WAKATIME_API_KEY = process.env.WAKATIME_API_KEY;
@@ -50,19 +46,16 @@ if (!WAKATIME_API_KEY || !SLACK_TOKEN) {
   process.exit(1);
 }
 
-enum IntervalStatus {
-  coding = "coding",
-  break = "break",
-}
+let userConfig: Config;
 
-const MS_IN_MINUTES = 1000 * 60;
-const SECONDS_IN_MINUTES = 60;
-
-interface State {
-  last_date_time: string;
-  last_total_seconds: number;
-  current_fatigue_minutes: number;
-  current_interval_status: IntervalStatus;
+async function loadConfig(): Promise<void> {
+  try {
+    await fs.mkdir(CONFIG_DIR, { recursive: true });
+    const data = await fs.readFile(CONFIG_FILE, "utf-8");
+    userConfig = JSON.parse(data);
+  } catch (e) {
+    console.error("Failed to load user config.");
+  }
 }
 
 async function loadState(): Promise<State> {
@@ -105,7 +98,7 @@ async function fetchTodayTotalSeconds(): Promise<number> {
 
 function calculateBrainSOC(fatigue: number): number {
   const soc =
-    ((CONFIG.capacityMinutes - fatigue) / CONFIG.capacityMinutes) * 100;
+    ((userConfig.capacityMinutes - fatigue) / userConfig.capacityMinutes) * 100;
   return Math.max(0, Math.min(100, soc));
 }
 
@@ -178,7 +171,7 @@ async function writeSOCFile(soc: number): Promise<void> {
     soc: Number(soc.toFixed(1)),
     percentage: `${Math.round(soc)}%`,
     timestamp: new Date().toISOString(),
-    fatigue_minutes: Number(CONFIG.capacityMinutes.toFixed(1)), // for plugin debugging if needed
+    fatigue_minutes: Number(userConfig.capacityMinutes.toFixed(1)), // for plugin debugging if needed
   };
   await fs.writeFile(SOC_FILE, JSON.stringify(payload, null, 2));
   console.log(`Brain SOC written to ${SOC_FILE}`);
@@ -199,19 +192,19 @@ function updateState(
   currentTotalSeconds: number,
 ): void {
   const deltaMinutes = getDeltaMinutes(state, currentTotalSeconds);
-  const isCodingInterval = deltaMinutes > CONFIG.codingThresholdMinutes;
+  const isCodingInterval = deltaMinutes > userConfig.codingThresholdMinutes;
 
   if (isCodingInterval) {
-    const drainMinutes = deltaMinutes * CONFIG.drainRate;
+    const drainMinutes = deltaMinutes * userConfig.drainRate;
     state.current_fatigue_minutes = Math.min(
       state.current_fatigue_minutes + drainMinutes,
-      CONFIG.capacityMinutes,
+      userConfig.capacityMinutes,
     );
     state.current_interval_status = IntervalStatus.coding;
   } else {
     state.current_fatigue_minutes = Math.max(
       0,
-      state.current_fatigue_minutes - CONFIG.rechargeMinutesPerBreak,
+      state.current_fatigue_minutes - userConfig.rechargeMinutesPerBreak,
     );
     state.current_interval_status = IntervalStatus.break;
   }
@@ -229,8 +222,6 @@ function is15MinutesFromLastRun(state: State, nowStr: string): boolean {
 
 async function runOnce() {
   await loadConfig();
-  console.log("Config loaded");
-  console.log(`Configs: ${JSON.stringify(CONFIG)}`);
   const state: State = await loadState();
   const nowStr = new Date().toISOString();
   const shouldRefetch: boolean = is15MinutesFromLastRun(state, nowStr);

@@ -21,8 +21,8 @@ M.options = vim.deepcopy(M.defaults)
 
 -- Build lookup table once (no duplication)
 local allowed = {}
-for _, k in ipairs(M.keys) do
-  allowed[k] = true
+  for _, k in ipairs(M.keys) do
+    allowed[k] = true
 end
 
 -- Snake_case → camelCase mapping for backend
@@ -39,17 +39,19 @@ end
 
 local function to_backend_format(opts)
   local backend = {}
+
   for _, key in ipairs(M.keys) do
     local camel_key = backend_mapping[key]
     backend[camel_key] = opts[key]
   end
+
   return backend
 end
 
 -- Merge new values and save to disk
 function M.merge(new_opts)
   if type(new_opts) ~= "table" then
-    notify.erro("config.merge expects a table")
+    notify.error("config.merge expects a table")
     return
   end
 
@@ -71,8 +73,15 @@ function M.load()
     return
   end
 
+  if vim.fn.filereadable(CONFIG_FILE) == 0 then
+    -- First run → write defaults to disk immediately
+    M.save()
+    return
+  end
+
   local content = vim.fn.readfile(CONFIG_FILE)
   local ok, backend_config = pcall(vim.json.decode, table.concat(content, ""))
+
   if not ok or not backend_config then
     return
   end
@@ -80,9 +89,11 @@ function M.load()
   -- Convert camelCase back to snake_case (retire after lua rewrite of TS backend)
   for _, key in ipairs(M.keys) do
     local camel_key = backend_mapping[key]
+
     if backend_config[camel_key] ~= nil then
       M.options[key] = backend_config[camel_key]
     end
+
   end
 end
 
@@ -101,7 +112,7 @@ function M.save()
   end)
 
   if not ok then
-    notify.erro("Failed to save config - " .. (err or "unknown error"))
+    notify.error("Failed to save config - " .. (err or "unknown error"))
   end
 end
 
