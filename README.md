@@ -1,6 +1,6 @@
-# brain-soc.nvim
+# brain-battery.nvim
 
-**Real-time "Brain SOC" (battery) for your Neovim statusline**  
+**Real-time "brain battery" estimator for your Neovim statusline**  
 Powered by WakaTime + a 15-minute cron job that updates your Slack status too.
 
 ## Features
