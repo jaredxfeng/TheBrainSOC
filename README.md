@@ -38,13 +38,13 @@ return {
 ```lua
 return {
   "nvim-lualine/lualine.nvim",
-  dependencies = { "jaredxfeng/brain-battery.nvim" },  -- ← this ensures correct load order
+  dependencies = { "jaredxfeng/brain-battery.nvim" },
   event = "VeryLazy",
   opts = function(_, opts)
     opts.sections = opts.sections or {}
     opts.sections.lualine_x = vim.list_extend(
       opts.sections.lualine_x or {},
-      { require("brain-battery").lualine_component() }  -- ← this was the missing piece
+      { require("brain-battery").lualine_component() }
     )
     return opts
   end,
