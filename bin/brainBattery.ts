@@ -295,8 +295,8 @@ async function runOnce(): Promise<void> {
     } else {
       await updateStateLive(state, now);
     }
-    await saveState(state);
   }
+  await saveState(state);
 
   const soc = calculateBrainBattery(state.current_fatigue_minutes);
   await writeBrainBatteryFile(soc);
