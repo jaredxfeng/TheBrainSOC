@@ -56,15 +56,14 @@ return {
 
 4. Add a line inside your `crontab -e`: `*/15 * * * * cd ~/.local/share/nvim/lazy/brain-battery.nvim/bin && ./run-brain-battery.sh`. Save and exit.
 
-5. See `getEmoji()` in `brainBattery.ts`, this maps the current brain battery level to a battery emoji that you should also manually upload to your slack workspace.
-
-And you are done. Restart your neovim and continue to enjoy coding until it stops you!
+And you are done. Restart your neovim and enjoy coding until it stops you!
 
 ## Slack App Creation
 1. Search for the "Your Apps" page on Slack web, click create new app -> from scratch -> name the app and select the workspace you want.
 2. Once created, go to the app settings, find the OAuth & Permissions from the left menu.
 3. Inside OAuth & Permissions, the "User OAuth Token" is the token you will input to `BrainBatterySetup`. Copy and save it.
-4. Still in OAuth & Permissions, scroll down to find the User Token Scopes section. Click "Add an OAuth Scope". Find and enable `users:read`, `users.profile:write`, and `users.profile:read`. You are now all set in Slack.
+4. Still in OAuth & Permissions, scroll down to find the User Token Scopes section. Click "Add an OAuth Scope". Find and enable `users:read`, `users.profile:write`, and `users.profile:read`. 
+5. In your slack app itself (make sure you are in the target workspace), add emojis according to `getEmoji()` function in `brainBattery.ts`. You are now all set in Slack.
  
 ## Parameters in `opts`
 
