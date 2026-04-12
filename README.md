@@ -20,7 +20,6 @@ return {
   dependencies = {
     { "nvim-lualine/lualine.nvim", optional = true },
   },
-  lazy = true,
   event = "VeryLazy",
   config = function(_, opts)
     require("brain-battery")._opts = opts
