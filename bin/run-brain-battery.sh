@@ -8,4 +8,4 @@ if [ ! -d "../node_modules" ]; then
   pnpm install --frozen-lockfile --silent
 fi
 
-pnpm exec tsx ./brainBattery.ts >> ./brain-battery.log 2>&1
+../node_modules/.bin/tsx ./brainBattery.ts >> ./brain-battery.log 2>&1
