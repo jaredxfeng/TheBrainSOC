@@ -1,6 +1,6 @@
 # brain-battery.nvim
 
-**Real-time "brain battery" estimator for your Neovim statusline**  
+**Real-time "brain battery" estimator for your lualine**  
 Powered by WakaTime.
 
 ## Features
